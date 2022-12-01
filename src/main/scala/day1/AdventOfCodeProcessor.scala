@@ -1,3 +1,5 @@
+package day1
+
 import cats.effect.kernel.Sync
 import cats.effect.{ExitCode, IO, IOApp}
 
