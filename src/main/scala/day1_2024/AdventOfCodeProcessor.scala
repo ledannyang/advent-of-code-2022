@@ -2,22 +2,26 @@ package day1_2024
 
 import cats.effect.kernel.Sync
 import cats.effect.{ExitCode, IO, IOApp}
+import cats.implicits.catsSyntaxEitherId
 import parser.FileParser
 
-object AdventOfCodeProcessor extends IOApp {
-  override def run(args: List[String]): IO[ExitCode] = {
+import scala.util.{Failure, Success, Try}
 
+object AdventOfCodeProcessor extends IOApp {
+  override def run(args: List[String]): IO[ExitCode] =
     for {
-      solution <- Sync[IO].delay(AdventOfCode.solve())
+      solution <- AdventOfCode.solve()
       _ = println(s"Size: $solution")
     } yield ExitCode.Success
-  }
 }
 
 
 object AdventOfCode {
 
-  def readFromFile(): List[String] = FileParser.parse("src/main/scala/day1_2024/input/input.txt")
+  def readFromFile(): IO[Either[Throwable, List[String]]] = Try(FileParser.parse("src/main/scala/day1_2024/input/input.txt")) match {
+    case Failure(ex) => Sync[IO].delay(ex.asLeft[List[String]])
+    case Success(res) => Sync[IO].delay(res.asRight[Throwable])
+  }
 
   def normaliseFile(strList: List[String]): (List[Int], List[Int]) =
     strList.map(str => {
@@ -41,12 +45,15 @@ object AdventOfCode {
       }).toList.sum
   }
 
+  def solve(): IO[Int] =
+    for {
+      maybeRead <- readFromFile()
+      tuples <- maybeRead match {
+        case Left(ex) => Sync[IO].raiseError[(List[Int], List[Int])](new Throwable(ex.getMessage))
+        case Right(fileStr) => Sync[IO].delay(normaliseFile(fileStr))
+      }
+      res = calculateDistance(tuples._1, tuples._2)
+    } yield res
 
-  def solve(): Int = {
-    val l = readFromFile()
-    val (l1, l2) = normaliseFile(l)
-
-    calculateDistance(l1, l2)
-  }
 
 }
